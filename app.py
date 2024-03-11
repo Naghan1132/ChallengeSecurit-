@@ -1,56 +1,59 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Fonction pour l'onglet Accueil
-def accueil():
-    st.title("Application de Cybersécurité")
-    st.write("""
-        Bienvenue sur notre application de cybersécurité. Cette application vous permet d'analyser et de visualiser des données de sécurité informatique.
-        """)
+# Charger les données
+@st.cache_data
+def load_data(file_path):
+    return pd.read_csv(file_path, sep=';')
 
-# Fonction pour l'onglet Dashboard
-def dashboard():
-    st.title("Dashboard")
-    st.write("Voici quelques graphiques et indicateurs :")
+# Titre de l'application
+st.title("Analyse des logs Iptables")
 
-    # Exemple de graphique à barres
-    st.subheader("Graphique à barres")
-    data = pd.DataFrame({
-        'Catégorie': ['A', 'B', 'C', 'D'],
-        'Valeurs': [20, 30, 40, 50]
-    })
-    st.bar_chart(data.set_index('Catégorie'))
+# Afficher les premières lignes des données
+st.write("Les premières lignes des données :")
+df = load_data("logs_iptables.csv")
+st.write(df.head())
 
-    # Exemple de graphique linéaire
-    st.subheader("Graphique linéaire")
-    np.random.seed(0)
-    df = pd.DataFrame(np.random.randn(10, 2), columns=['A', 'B'])
-    st.line_chart(df)
+# 1. Analyse descriptive des flux rejetés et autorisés par protocoles (TCP, UDP) avec filtrage par plages de ports
+st.subheader("Analyse des flux par protocoles et plages de ports")
+selected_protocol = st.selectbox("Sélectionner un protocole :", df['Protocole'].unique())
+min_port = st.slider("Port minimum :", min_value=0, max_value=65535, value=0)
+max_port = st.slider("Port maximum :", min_value=0, max_value=65535, value=65535)
 
-    # Exemple de tableau
-    st.subheader("Tableau de données")
-    st.write(data)
+filtered_df = df[(df['Protocole'] == selected_protocol) & (df['Port de destination'].between(min_port, max_port))]
+st.write(filtered_df)
 
-# Fonction pour l'onglet Machine Learning
-def machine_learning():
-    st.title("Machine Learning")
-    st.write("""
-        Dans cet onglet, vous pourriez mettre en œuvre votre code de détection d'adresses IP malveillantes en utilisant des algorithmes de machine learning.
-        """)
+# 2. Parcours des données via l'utilisation de renderDataTable
+st.subheader("Parcours des données via renderDataTable")
+st.dataframe(filtered_df)
 
-def main():
-    st.sidebar.title("Navigation")
-    pages = ["Accueil", "Dashboard", "Machine Learning"]
-    selection = st.sidebar.radio("Aller à", pages)
+# 3. Visualisation interactive des données
+st.subheader("Visualisation interactive des données")
+source_ip_counts = df['Source IP'].value_counts()
+selected_ip = st.selectbox("Sélectionner une adresse IP source :", source_ip_counts.index)
+filtered_destinations = df[df['Source IP'] == selected_ip]
+destination_counts = filtered_destinations['Destination IP'].value_counts()
 
-    if selection == "Accueil":
-        accueil()
-    elif selection == "Dashboard":
-        dashboard()
-    elif selection == "Machine Learning":
-        machine_learning()
+plt.figure(figsize=(10, 6))
+sns.barplot(x=destination_counts.index, y=destination_counts.values)
+plt.xlabel('Adresse IP de destination')
+plt.ylabel('Nombre d\'occurrences')
+plt.title('Occurrence des adresses IP de destination')
+plt.xticks(rotation=45)
+st.pyplot()
 
-if __name__ == "__main__":
-    main()
+# 4. Statistiques relatives
+st.subheader("Statistiques relatives")
+top_source_ips = source_ip_counts.head(5)
+st.write("TOP 5 des IP sources les plus émettrices :")
+st.write(top_source_ips)
+
+top_ports = df[df['Action'] == 'Permit']['Port de destination'].value_counts().head(10)
+st.write("TOP 10 des ports inférieurs à 1024 avec un accès autorisé :")
+st.write(top_ports)
+
+invalid_ips = df[~df['Source IP'].str.startswith('192.168')]
+st.write("Accès des adresses non inclues dans le plan d'adressage de l'Université :")
+st.write(invalid_ips)
