@@ -18,6 +18,12 @@ Bienvenue dans le Challenge de Sécurité 2024 ! Cette année, nous abordons des
 
 3. **Utilisation d'ELK :** Pour certains aspects du challenge, vous aurez la possibilité d'utiliser ELK pour améliorer l'analyse des logs et la visualisation des données. Cela vous aidera à mieux comprendre les patterns et les anomalies dans les logs du pare-feu.
 
+
+```bash
+
+python -m streamlit run app.py
+```
+
 ## Ressources
 
 - Les logs de Firewall Iptables hébergés sur le cloud seront disponibles pour l'analyse des règles existantes.
