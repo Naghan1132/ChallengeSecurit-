@@ -89,7 +89,7 @@ def machine_learning(data):
     st.title("Machine Learning")
 
     # Générer des données pour l'apprentissage automatique
-    ml_data_df = generate_ml(data)
+    ml_data_df = train_ml()
     print(ml_data_df)
 
     # Afficher un échantillon des données d'apprentissage automatique
@@ -100,9 +100,9 @@ def machine_learning(data):
     plt.figure(figsize=(10, 8))
     
     # Sélection des colonnes pertinentes pour le graphique
-    x = ml_data_df['SPT']
+    x = ml_data_df['SRC']
     x = x.head(10000)
-    y = ml_data_df['Rule']
+    y = ml_data_df['Nombre_requetes']
     y = y.head(10000)
     clusters = ml_data_df['Cluster']
     clusters = clusters.head(10000)
@@ -111,8 +111,8 @@ def machine_learning(data):
     sns.scatterplot(x=x, y=y, hue=clusters, palette='viridis', alpha=0.5)
     
     # Ajout de labels et titre
-    plt.xlabel('SPT')
-    plt.ylabel('Règle')
+    plt.xlabel('SRC')
+    plt.ylabel('Nombre_requetes')
     plt.title('Nuage de points avec clusters des individus')
     
     plt.legend(title='Cluster')
@@ -121,59 +121,44 @@ def machine_learning(data):
     st.pyplot(plt.gcf())
 
 
-def generate_ml(data): 
+def train_ml(): 
     from sklearn.cluster import KMeans
     from sklearn.preprocessing import StandardScaler
+    
+    data_ml = pd.read_csv("C:/Users/nagrimault/Downloads/data_ML.csv",sep=";")  # Charger vos données à partir du fichier CSV
 
-    # Générer des données pour l'apprentissage automatique
-    ml_data = data.copy()  # Copie des données pour éviter de modifier les données originales
+    print(data_ml.columns)
+    # centrer et réduire les données
+   
+   # Sélectionner les colonnes numériques à centrer et réduire
+    numerical_columns = ['Nombre_requetes', 'Nombre_Deny', 'Nombre_Permit','Nombre_SPT_sup_1024', 'Nombre_SPT_inf_1024', 'Nombre_SPT_distinct', 'Nombre_IPDest_distinct']
 
-    features = data[['SPT']]
-
+    # Créer un objet StandardScaler
     scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(features)
-    print(scaled_features)
 
-    kmeans = KMeans(n_clusters=2, random_state=42)  # Spécifiez le nombre de clusters souhaité
-    kmeans.fit(scaled_features)
+    # Centrer et réduire les données
+    data_ml[numerical_columns] = scaler.fit_transform(data_ml[numerical_columns])
+
+    # Créer un modèle KMeans avec 2 clusters
+    kmeans = KMeans(n_clusters=2, random_state=0)
+
+    # Adapter le modèle aux données centrées et réduites
+    kmeans.fit(data_ml[numerical_columns])
+
+
+    import pickle
+    filename = 'kmeans.pkl'
+    pickle.dump(kmeans, open(filename, 'wb'))
+
+    # Ajouter les étiquettes des clusters au DataFrame
+    data_ml['Cluster'] = kmeans.labels_
+
+    return data_ml
     
-    cluster_labels = kmeans.labels_
-
-    data['Cluster'] = cluster_labels
-
-    return data
     
-    
-    # # Séparation des caractéristiques et de la cible
-    # X = ml_data.drop(columns=['Status'])  # Caractéristiques (variables indépendantes)
-    # y = ml_data['Status']  # Cible (variable dépendante)
-
-    # # Diviser les données en ensembles d'entraînement et de test (80% d'entraînement, 20% de test)
-    # from sklearn.model_selection import train_test_split
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-
-    # # Entraîner un modèle de machine learning (par exemple, une régression logistique)
-    # from sklearn.linear_model import LogisticRegression
-    # model = LogisticRegression()
-    # model.fit(X_train, y_train)
-
-    # # Évaluer la performance du modèle
-    # accuracy = model.score(X_test, y_test)
-    # st.write(f"Précision du modèle : {accuracy}")
-
-    # # Retourner les données utilisées pour l'entraînement et l'évaluation
-    # return {
-    #     'X_train': X_train,
-    #     'X_test': X_test,
-    #     'y_train': y_train,
-    #     'y_test': y_test,
-    #     'model': model
-    # }
-
     
 def main():
-    data = pd.read_csv("C:/Users/nagrimault/Downloads/final_proto_2.csv")  # Charger vos données à partir du fichier CSV
+    data = pd.read_csv("C:/Users/nagrimault/Downloads/final_proto_TS.csv")  # Charger vos données à partir du fichier CSV
 
     tabs = ["Dashboard", "Machine Learning"]
     selected_tab = st.sidebar.selectbox("Sélectionnez un onglet", tabs)
@@ -181,6 +166,7 @@ def main():
         dashboard(data)
     elif selected_tab == "Machine Learning":
         machine_learning(data)
+    
 
 if __name__ == "__main__":
     main()
